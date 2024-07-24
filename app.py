@@ -25,7 +25,7 @@ sample_class1_dir = 'sample_images/mini_no'
 sample_class2_dir = 'sample_images/mini_yes'
 
 st.title(":blue[Binary Insight AI] (Your Binary Neural Network Playground)")
-st.write("---") 
+st.write("---")
 st.subheader("Info")
 st.markdown(''':blue[Model Architecture Display:]
 Visualizes and updates the neural network architecture in real-time using VisualKeras.
@@ -56,7 +56,7 @@ Enables saving and downloading of the trained model for later use.
             
 :blue[Sample Image Display:]
 Displays sample images from each class side by side for visual inspection.''')
-st.write("---") 
+st.write("---")
 
 # Upload images for Class 1
 st.subheader("Upload Images for Class 1")
@@ -79,7 +79,7 @@ if uploaded_class2_images:
         img = Image.open(img).convert("RGB")
         img_path = os.path.join(class2_dir, f"class2_image_{i}.jpg")
         img.save(img_path)
-st.write("---") 
+st.write("---")
 # Display sample images from each class
 st.subheader("Sample Images from Each Class")
 col1, col2 = st.columns(2)
@@ -193,7 +193,13 @@ def update_architecture_image():
         architecture_placeholder.image(img_bytes, use_column_width=True)
 
 update_architecture_image()
-model.summary(print_fn=lambda x: st.text(x))
+
+# Capture the model summary in a buffer
+buffer = io.StringIO()
+model.summary(print_fn=lambda x: buffer.write(x + "\n"))
+summary_text = buffer.getvalue()
+buffer.close()
+st.text(summary_text)
 
 # Load images and preprocess
 def load_and_preprocess_images(directory, label, preprocess_func=None):
@@ -208,136 +214,54 @@ def load_and_preprocess_images(directory, label, preprocess_func=None):
         data.append((img_array, label))
     return data
 
-# Prepare dataset
-def prepare_dataset():
-    class1_data = load_and_preprocess_images(class1_dir, 0, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-    class2_data = load_and_preprocess_images(class2_dir, 1, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-
-    data = class1_data + class2_data
-    np.random.shuffle(data)
-    X, y = zip(*data)
-    X = np.array(X)
-    y = np.array(y)
-    return X, y
-
-# Initialize DataFrame to store metrics
-metrics_df = pd.DataFrame(columns=['epoch', 'accuracy', 'loss', 'val_accuracy', 'val_loss'])
-
-# Placeholders for updating the metrics
-table_placeholder = st.empty()
-chart_placeholder = st.empty()
-
-# Callback to update metrics and architecture image
-class MetricsCallback(tf.keras.callbacks.Callback):
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-        metrics_df.loc[epoch] = [epoch, logs.get('accuracy'), logs.get('loss'), logs.get('val_accuracy'), logs.get('val_loss')]
-        table_placeholder.write(metrics_df)
-        
-        # Plot the metrics
-        fig, ax = plt.subplots(2, 2, figsize=(15, 10))
-        ax[0, 0].plot(metrics_df['epoch'], metrics_df['accuracy'], label='Training Accuracy')
-        ax[0, 0].set_title('Training Accuracy')
-        ax[0, 0].set_xlabel('Epoch')
-        ax[0, 0].set_ylabel('Accuracy')
-        
-        ax[0, 1].plot(metrics_df['epoch'], metrics_df['loss'], label='Training Loss')
-        ax[0, 1].set_title('Training Loss')
-        ax[0, 1].set_xlabel('Epoch')
-        ax[0, 1].set_ylabel('Loss')
-        
-        ax[1, 0].plot(metrics_df['epoch'], metrics_df['val_accuracy'], label='Validation Accuracy')
-        ax[1, 0].set_title('Validation Accuracy')
-        ax[1, 0].set_xlabel('Epoch')
-        ax[1, 0].set_ylabel('Accuracy')
-        
-        ax[1, 1].plot(metrics_df['epoch'], metrics_df['val_loss'], label='Validation Loss')
-        ax[1, 1].set_title('Validation Loss')
-        ax[1, 1].set_xlabel('Epoch')
-        ax[1, 1].set_ylabel('Loss')
-
-        plt.tight_layout()
-        chart_placeholder.pyplot(fig)
-        
-        # Update the architecture image
-        update_architecture_image()
-
-# Progress bar for training
-progress_placeholder = st.empty()
-
-# Train the model with manually uploaded images
-if st.button("Train Model with Manually Uploaded Images"):
-    if not uploaded_class1_images or not uploaded_class2_images:
-        st.warning("Please upload images for both classes.")
+def get_data():
+    if uploaded_class1_images and uploaded_class2_images:
+        data_class1 = load_and_preprocess_images(class1_dir, 0)
+        data_class2 = load_and_preprocess_images(class2_dir, 1)
     else:
-        with st.spinner('Training...'):
-            X, y = prepare_dataset()
-            datagen = ImageDataGenerator(validation_split=0.2)
-            train_generator = datagen.flow(X, y, batch_size=batch_size, subset='training')
-            val_generator = datagen.flow(X, y, batch_size=batch_size, subset='validation')
+        data_class1 = load_and_preprocess_images(sample_class1_dir, 0)
+        data_class2 = load_and_preprocess_images(sample_class2_dir, 1)
+    return data_class1 + data_class2
 
-            callbacks = [MetricsCallback()]
-            if early_stopping:
-                callbacks.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True))
+# Convert data to TensorFlow Dataset
+def create_dataset(data):
+    images, labels = zip(*data)
+    images = np.array(images)
+    labels = np.array(labels)
+    return tf.data.Dataset.from_tensor_slices((images, labels)).batch(batch_size)
 
-            class ProgressBarCallback(tf.keras.callbacks.Callback):
-                def on_epoch_end(self, epoch, logs=None):
-                    percent_complete = int((epoch + 1) / epochs * 100)
-                    progress_placeholder.progress(percent_complete, text=f'Epoch {epoch + 1}/{epochs} complete')
+data = get_data()
+if data:
+    dataset = create_dataset(data)
+else:
+    st.error("No images available for training.")
 
-            history = model.fit(train_generator, epochs=epochs, validation_data=val_generator, 
-                                callbacks=callbacks + [ProgressBarCallback()])
-            
-            st.success("Model trained successfully!")
-            
-            # Display accuracy
-            train_accuracy = history.history['accuracy'][-1]
-            val_accuracy = history.history['val_accuracy'][-1]
-            st.write(f"Training Accuracy: {train_accuracy:.2f}")
-            st.write(f"Validation Accuracy: {val_accuracy:.2f}")
+# Train the model
+if st.button("Train Model"):
+    if data:
+        st.write("Training the model...")
 
-# Train the model with sample dataset
-if st.button("Upload Sample Brain MRI Image Dataset"):
-    class1_data = load_and_preprocess_images(sample_class1_dir, 0, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-    class2_data = load_and_preprocess_images(sample_class2_dir, 1, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-
-    data = class1_data + class2_data
-    np.random.shuffle(data)
-    X, y = zip(*data)
-    X = np.array(X)
-    y = np.array(y)
-
-    with st.spinner('Training...'):
-        datagen = ImageDataGenerator(validation_split=0.2)
-        train_generator = datagen.flow(X, y, batch_size=batch_size, subset='training')
-        val_generator = datagen.flow(X, y, batch_size=batch_size, subset='validation')
-
-        callbacks = [MetricsCallback()]
+        # Callbacks
+        callbacks = []
         if early_stopping:
-            callbacks.append(tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True))
+            callbacks.append(tf.keras.callbacks.EarlyStopping(patience=3, restore_best_weights=True))
 
-        class ProgressBarCallback(tf.keras.callbacks.Callback):
-            def on_epoch_end(self, epoch, logs=None):
-                percent_complete = int((epoch + 1) / epochs * 100)
-                progress_placeholder.progress(percent_complete, text=f'Epoch {epoch + 1}/{epochs} complete')
+        history = model.fit(dataset, epochs=epochs, callbacks=callbacks)
+        st.write("Training complete.")
 
-        history = model.fit(train_generator, epochs=epochs, validation_data=val_generator, 
-                            callbacks=callbacks + [ProgressBarCallback()])
-        
-        st.success("Model trained successfully!")
-        
-        # Display accuracy
-        train_accuracy = history.history['accuracy'][-1]
-        val_accuracy = history.history['val_accuracy'][-1]
-        st.write(f"Training Accuracy: {train_accuracy:.2f}")
-        st.write(f"Validation Accuracy: {val_accuracy:.2f}")
+        # Plot training history
+        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+        ax[0].plot(history.history['loss'], label='Loss')
+        ax[0].plot(history.history['accuracy'], label='Accuracy')
+        ax[0].set_title("Training Loss and Accuracy")
+        ax[0].set_xlabel("Epoch")
+        ax[0].set_ylabel("Value")
+        ax[0].legend()
 
-# Save and download model
-if st.button("Save Model"):
-    model.save('model.h5')
-    st.success("Model saved successfully!")
+        st.pyplot(fig)
+    else:
+        st.error("No images available for training.")
 
-# Download link for the saved model
-if os.path.exists('model.h5'):
-    with open('model.h5', 'rb') as f:
-        st.download_button("Download Model", f, file_name="model.h5")
+# Clean up temporary directories
+shutil.rmtree(class1_dir)
+shutil.rmtree(class2_dir)
