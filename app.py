@@ -196,7 +196,8 @@ update_architecture_image()
 
 # Capture the model summary in a buffer
 buffer = io.StringIO()
-model.summary(print_fn=lambda x: buffer.write(x + "\n"))
+with redirect_stdout(buffer):
+    model.summary()
 summary_text = buffer.getvalue()
 buffer.close()
 st.text(summary_text)
