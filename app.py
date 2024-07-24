@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import os
 import tempfile
-import visualkeras
-import io
 import shutil
+import io
+import visualkeras
+from contextlib import redirect_stdout
 
 # Temporary directories for uploaded images
 class1_dir = tempfile.mkdtemp()
@@ -80,6 +81,7 @@ if uploaded_class2_images:
         img_path = os.path.join(class2_dir, f"class2_image_{i}.jpg")
         img.save(img_path)
 st.write("---")
+
 # Display sample images from each class
 st.subheader("Sample Images from Each Class")
 col1, col2 = st.columns(2)
