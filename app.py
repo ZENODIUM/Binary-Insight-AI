@@ -62,7 +62,8 @@ with col2:
         st.image(sample_img_path, caption="Sample Class 2 Image")
 
 # Parameters for the neural network
-st.sidebar.title(":blue[Model Parameters]")
+st.sidebar.title(":blue[Binary Insight] AI")
+st.sidebar.image("robot_image.png")
 st.sidebar.title("Model Parameters")
 num_conv_layers = st.sidebar.slider("Number of Convolutional Layers", 1, 5, 2)
 conv_filters = [st.sidebar.slider(f"Filters in Conv Layer {i+1}", 16, 128, 32*(i+1)) for i in range(num_conv_layers)]
