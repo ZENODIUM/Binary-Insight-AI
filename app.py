@@ -22,6 +22,27 @@ sample_class1_dir = 'sample_images/mini_no'
 sample_class2_dir = 'sample_images/mini_yes'
 
 st.title("Neural Network Binary Classification")
+st.markdown('''
+Functionality:
+Image Upload: Allows users to upload images for two classes (Class 1 and Class 2).
+Sample Images: Displays sample images from each class if no images are uploaded.
+Model Configuration: Customizable CNN parameters through sidebar sliders and selectors, including:
+Number of convolutional layers
+Filters in each convolutional layer
+Kernel size and pool size
+Number of dense layers and neurons
+Learning rate and optimizer choice
+Option for early stopping
+Model Training:
+Train the model using uploaded images or a pre-defined sample dataset.
+Real-time training metrics and architecture visualizations.
+Progress bar and metric plots for accuracy and loss during training.
+Model Saving & Download: Option to save and download the trained model as a .h5 file.
+This setup offers a user-friendly interface to build, train, and evaluate a binary image classification model.
+''')
+
+
+
 
 # Upload images for Class 1
 st.subheader("Upload Images for Class 1")
