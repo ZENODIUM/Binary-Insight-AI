@@ -23,7 +23,8 @@ sample_class2_dir = 'sample_images/mini_yes'
 
 st.title(":blue[Binary Insight AI] Neural Network Binary Classification")
 st.markdown('''
-Functionality:
+:blue[Functionality:]
+
 :blue-background[Image Upload]: Allows users to upload images for two classes (Class 1 and Class 2).
 
 :blue-background[Sample Images:] Displays sample images from each class if no images are uploaded.
