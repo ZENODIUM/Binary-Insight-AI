@@ -3,9 +3,6 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, MaxPooling2D
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.applications import VGG16, ResNet50
-from tensorflow.keras.applications.vgg16 import preprocess_input as vgg_preprocess
-from tensorflow.keras.applications.resnet50 import preprocess_input as resnet_preprocess
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -66,17 +63,12 @@ with col2:
 
 # Parameters for the neural network
 st.sidebar.title("Model Parameters")
-model_type = st.sidebar.selectbox("Select Model Type", ["Custom CNN", "VGG16", "ResNet"])
-if model_type == "Custom CNN":
-    num_conv_layers = st.sidebar.slider("Number of Convolutional Layers", 1, 5, 2)
-    conv_filters = [st.sidebar.slider(f"Filters in Conv Layer {i+1}", 16, 128, 32*(i+1)) for i in range(num_conv_layers)]
-    kernel_size = st.sidebar.slider("Kernel Size", 2, 5, 3)
-    pool_size = st.sidebar.slider("Pool Size", 2, 3, 2)
-    num_dense_layers = st.sidebar.slider("Number of Dense Layers", 1, 3, 1)
-    dense_neurons = [st.sidebar.slider(f"Neurons in Dense Layer {i+1}", 32, 512, 128*(i+1)) for i in range(num_dense_layers)]
-else:
-    num_dense_layers = st.sidebar.slider("Number of Dense Layers", 1, 3, 1)
-    dense_neurons = [st.sidebar.slider(f"Neurons in Dense Layer {i+1}", 32, 512, 128*(i+1)) for i in range(num_dense_layers)]
+num_conv_layers = st.sidebar.slider("Number of Convolutional Layers", 1, 5, 2)
+conv_filters = [st.sidebar.slider(f"Filters in Conv Layer {i+1}", 16, 128, 32*(i+1)) for i in range(num_conv_layers)]
+kernel_size = st.sidebar.slider("Kernel Size", 2, 5, 3)
+pool_size = st.sidebar.slider("Pool Size", 2, 3, 2)
+num_dense_layers = st.sidebar.slider("Number of Dense Layers", 1, 3, 1)
+dense_neurons = [st.sidebar.slider(f"Neurons in Dense Layer {i+1}", 32, 512, 128*(i+1)) for i in range(num_dense_layers)]
 
 learning_rate = st.sidebar.slider("Learning Rate", 0.0001, 0.1, 0.001, step=0.0001)
 epochs = st.sidebar.slider("Number of Epochs", 1, 100, 10)
@@ -101,40 +93,20 @@ def get_optimizer(name, learning_rate):
 
 # Building the model
 def build_model():
-    if model_type == "Custom CNN":
-        model = Sequential()
-        model.add(Conv2D(conv_filters[0], (kernel_size, kernel_size), activation='relu', input_shape=(128, 128, 3)))
+    model = Sequential()
+    model.add(Conv2D(conv_filters[0], (kernel_size, kernel_size), activation='relu', input_shape=(128, 128, 3)))
+    model.add(MaxPooling2D(pool_size=(pool_size, pool_size)))
+
+    for filters in conv_filters[1:]:
+        model.add(Conv2D(filters, (kernel_size, kernel_size), activation='relu'))
         model.add(MaxPooling2D(pool_size=(pool_size, pool_size)))
 
-        for filters in conv_filters[1:]:
-            model.add(Conv2D(filters, (kernel_size, kernel_size), activation='relu'))
-            model.add(MaxPooling2D(pool_size=(pool_size, pool_size)))
+    model.add(Flatten())
 
-        model.add(Flatten())
+    for neurons in dense_neurons:
+        model.add(Dense(neurons, activation='relu'))
 
-        for neurons in dense_neurons:
-            model.add(Dense(neurons, activation='relu'))
-
-        model.add(Dense(1, activation='sigmoid'))
-    elif model_type == "VGG16":
-        base_model = VGG16(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
-        model = Sequential([
-            base_model,
-            Flatten(),
-        ])
-        for neurons in dense_neurons:
-            model.add(Dense(neurons, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-    elif model_type == "ResNet":
-        base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
-        model = Sequential([
-            base_model,
-            Flatten(),
-        ])
-        for neurons in dense_neurons:
-            model.add(Dense(neurons, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-
+    model.add(Dense(1, activation='sigmoid'))
     opt = get_optimizer(optimizer, learning_rate)
     model.compile(optimizer=opt, loss='binary_crossentropy', metrics=['accuracy'])
     return model
@@ -176,8 +148,8 @@ def load_and_preprocess_images(directory, label, preprocess_func=None):
 
 # Prepare dataset
 def prepare_dataset():
-    class1_data = load_and_preprocess_images(class1_dir, 0, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-    class2_data = load_and_preprocess_images(class2_dir, 1, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
+    class1_data = load_and_preprocess_images(class1_dir, 0)
+    class2_data = load_and_preprocess_images(class2_dir, 1)
 
     data = class1_data + class2_data
     np.random.shuffle(data)
@@ -264,8 +236,8 @@ if st.button("Train Model with Manually Uploaded Images"):
 
 # Train the model with sample dataset
 if st.button("Upload Sample Brain MRI Image Dataset"):
-    class1_data = load_and_preprocess_images(sample_class1_dir, 0, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
-    class2_data = load_and_preprocess_images(sample_class2_dir, 1, preprocess_func=vgg_preprocess if model_type == "VGG16" else resnet_preprocess if model_type == "ResNet" else None)
+    class1_data = load_and_preprocess_images(sample_class1_dir, 0)
+    class2_data = load_and_preprocess_images(sample_class2_dir, 1)
 
     data = class1_data + class2_data
     np.random.shuffle(data)
