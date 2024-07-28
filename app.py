@@ -22,6 +22,7 @@ sample_class1_dir = 'sample_images/mini_no'
 sample_class2_dir = 'sample_images/mini_yes'
 
 st.title(":blue[Binary Insight AI] Neural Network Binary Classification")
+st.markdown("""---""")
 st.markdown('''
 :blue[Functionality:]
 
@@ -46,6 +47,7 @@ Progress bar and metric plots for accuracy and loss during training.
 
 This setup offers a user-friendly interface to build, train, and evaluate a binary image classification model.
 ''')
+st.markdown("""---""")
 
 
 
